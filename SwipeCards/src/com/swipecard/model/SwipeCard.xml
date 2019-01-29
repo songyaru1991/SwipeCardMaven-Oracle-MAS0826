@@ -1,0 +1,388 @@
+<?xml version="1.0" encoding="UTF-8" ?>  
+<!DOCTYPE mapper  
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"  
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.swipecard.model.SwipeCardMapper">
+	<select id="selectUserByRCNo" parameterType="int" resultType="RCLine">
+		select * from SWIPE.CSR_RC_LINE where RC_NO = #{RC_NO}
+	</select>
+
+	<select id="selectUserByCardID" parameterType="String" resultType="Employee">
+		select * from SWIPE.CSR_EMPLOYEE where CardID = #{CardID} and isOnWork=0
+	</select>
+
+	<select id="selectUserByCardIDAndPer" parameterType="String" resultType="Employee">
+		select * from SWIPE.CSR_EMPLOYEE where cardid = #{cardid} and
+		Permission = 1 and isOnWork=0
+	</select>
+	
+    <select id="selectWorkshopNo" parameterType="String" resultType="LineNO">
+		SELECT WorkshopNo FROM SWIPE.lineno WHERE WorkshopNo is not null AND ENABLED = 1 GROUP BY WorkshopNo 
+	</select>
+
+	<select id="selectUserByPermission" parameterType="String" resultType="Employee">
+		select CardID from SWIPE.CSR_EMPLOYEE where Permission = 1 and isOnWork=0
+	</select>
+
+	<select id="selectUserByLineNoAndWorkshopNo" parameterType="SwipeCardTimeInfos" resultType="SwipeCardTimeInfos">
+		SELECT EMP_ID,
+				RC_NO,
+		       SwipeCardTime,
+		       SwipeCardTime2
+		FROM SWIPE.CSR_SWIPECARDTIME		
+		 WHERE 
+		  WorkshopNo = #{WorkshopNo}	
+		  AND <![CDATA[ swipecardtime >to_date(to_char(sysdate,'yyyy-MM-dd'),'yyyy-MM-dd')]]>
+	</select>
+	
+	<select id="selectUserByLineNoAndWorkshopNo_DShift" parameterType="SwipeCardTimeInfos" resultType="SwipeCardTimeInfos">
+		SELECT a.EMP_ID,a.RC_NO,a.SwipeCardTime,a.SwipeCardTime2
+		FROM SWIPE.CSR_SWIPECARDTIME a
+        left join SWIPE.CSR_EMPLOYEE b on a.EMP_ID=b.Id
+		WHERE 
+		WorkshopNo = #{WorkshopNo}
+		and Shift = 'D'
+		AND  to_char(SwipeCardTime,'yyyy-MM-dd') = to_char(sysdate,'yyyy-MM-dd')
+	</select>
+	
+	<select id="selectUserByLineNoAndWorkshopNo_NShift" parameterType="SwipeCardTimeInfos" resultType="SwipeCardTimeInfos">
+		SELECT a.EMP_ID,a.RC_NO,a.SwipeCardTime,a.SwipeCardTime2
+		FROM SWIPE.CSR_SWIPECARDTIME a
+        left join SWIPE.CSR_EMPLOYEE b on a.EMP_ID=b.Id
+		WHERE 
+		WorkshopNo = #{WorkshopNo} 
+		and shift = 'N'
+		and to_char(#{SwipeCardTime}-interval '12' hour,'yyyy-MM-dd')=
+            to_char(swipecardtime-interval '12' hour,'yyyy-MM-dd')
+	</select>
+	
+	<select id="selectUserByEmpId" parameterType="String" resultType="Employee">
+		select * from  SWIPE.CSR_EMPLOYEE where  id=#{Id} and isOnWork=0 
+	</select>
+	
+	<select id="selectCountAByCardID" parameterType="SwipeCardTimeInfos" resultType="int">
+		SELECT count(*) 
+		FROM SWIPE.CSR_SWIPECARDTIME
+		WHERE EMP_ID = #{EMP_ID}
+		  AND SwipeCardTime is not NULL
+		  AND Shift = #{Shift}
+		  AND <![CDATA[ SwipeCardTime >  to_date(to_char(sysdate,'yyyy-MM-dd'),'yyyy-MM-dd') and SwipeCardTime < to_date(to_char(sysdate+1,'yyyy-MM-dd'),'yyyy-MM-dd') ]]>
+	</select>
+
+	<select id="selectCountBByCardID" parameterType='SwipeCardTimeInfos' resultType="int">
+		select count(*) from SWIPE.CSR_SWIPECARDTIME where EMP_ID = #{EMP_ID} 
+		AND Shift = #{Shift}
+		AND SwipeCardTime2 is not NULL 
+		and <![CDATA[ SwipeCardTime > to_date(to_char(sysdate,'yyyy-MM-dd'),'yyyy-MM-dd') and SwipeCardTime < to_date(to_char(sysdate+1,'yyyy-MM-dd'),'yyyy-MM-dd') ]]>		
+	</select>
+	
+	<select id="selectCountNByCardID" parameterType='SwipeCardTimeInfos'
+		resultType="int">
+		select count(*) from SWIPE.CSR_SWIPECARDTIME where EMP_ID = #{EMP_ID} 
+		AND Shift = #{Shift}
+		AND SwipeCardTime2 is not NULL 
+		and <![CDATA[ SwipeCardTime > to_date(to_char(sysdate-1,'yyyy-MM-dd'),'yyyy-MM-dd') and SwipeCardTime < to_date(to_char(sysdate,'yyyy-MM-dd'),'yyyy-MM-dd')]]>		
+	</select>
+	
+	<select id="selectGoWorkNByCardID" parameterType='SwipeCardTimeInfos' resultType="int">
+		select count(*) from SWIPE.CSR_SWIPECARDTIME where EMP_ID = #{EMP_ID} 
+		AND Shift = #{Shift}
+		AND SwipeCardTime is not NULL 
+		and <![CDATA[ SwipeCardTime > to_date(to_char(sysdate-1,'yyyy-MM-dd'),'yyyy-MM-dd') and SwipeCardTime < to_date(to_char(sysdate,'yyyy-MM-dd'),'yyyy-MM-dd')]]>		
+	</select>	
+	
+	<select id="selectOutWorkByCardID" parameterType='SwipeCardTimeInfos' resultType="int">
+		select count(*)  from SWIPE.CSR_SWIPECARDTIME where EMP_ID = #{EMP_ID} 
+		AND Shift = #{Shift}
+		AND SwipeCardTime is NULL and SwipeCardTime2 is not null
+		and <![CDATA[ SwipeCardTime2 > to_date(to_char(sysdate,'yyyy-MM-dd'),'yyyy-MM-dd') and SwipeCardTime2 < to_date(to_char(sysdate+1,'yyyy-MM-dd'),'yyyy-MM-dd') ]]>				
+	</select>	 
+	
+	<update id="updateOutWorkDSwipeTime" parameterType="SwipeCardTimeInfos">
+    	update SWIPE.CSR_SWIPECARDTIME set SwipeCardTime2 = #{SwipeCardTime2} 
+    	WHERE EMP_ID = #{EMP_ID} 
+    	and Shift = #{Shift} 
+		and <![CDATA[ to_char(SwipeCardTime,'yyyy-MM-dd') = to_char(sysdate,'yyyy-MM-dd')  ]]>
+    </update>
+    
+	<insert id="insertOutWorkSwipeTime" parameterType="SwipeCardTimeInfos">
+		INSERT INTO SWIPE.CSR_SWIPECARDTIME (EMP_ID,SWIPE_DATE,SwipeCardTime2,WorkshopNo,PRIMARY_ITEM_NO, SHIFT,CLASS_NO,PROD_LINE_CODE)
+		VALUES
+		(#{EMP_ID},#{SWIPE_DATE}, #{SwipeCardTime2}, #{WorkshopNo}, #{PRIMARY_ITEM_NO}, #{Shift},#{CLASS_NO},#{ProdLineCode})
+    </insert>
+    
+	 <update id="updateOutWorkNSwipeTime" parameterType="SwipeCardTimeInfos">
+    	update SWIPE.CSR_SWIPECARDTIME set SwipeCardTime2 = #{SwipeCardTime2} 
+    	WHERE EMP_ID = #{EMP_ID} 
+    	and Shift = #{Shift} 
+		and <![CDATA[ to_char(SwipeCardTime,'yyyy-MM-dd') = to_char(#{SwipeCardTime2}-interval '24' hour,'yyyy-MM-dd')  ]]>
+    </update>
+	
+	<select id="isGoWorkSwipeDuplicate" parameterType="SwipeCardTimeInfos"	resultType="int">
+	   SELECT count(*) 
+	   FROM SWIPE.CSR_SWIPECARDTIME
+	   WHERE EMP_ID = #{EMP_ID}
+       and to_char(SwipeCardTime,'yyyy-MM-dd')= to_char(sysdate,'yyyy-MM-dd')
+       AND swipecardtime > #{SwipeCardTime}-10/24/60
+	</select>
+	
+	<select id="isOutWorkSwipeDuplicate" parameterType="SwipeCardTimeInfos" resultType="int">
+	   SELECT count(*)
+	   FROM SWIPE.CSR_SWIPECARDTIME
+	   WHERE EMP_ID = #{EMP_ID}
+       and to_char(SwipeCardTime2,'yyyy-MM-dd')= to_char(sysdate,'yyyy-MM-dd') 
+       AND swipecardtime2 > #{SwipeCardTime2}-10/24/60
+	</select>
+
+	<select id="selectRCNo" parameterType="RCLine" resultType="RCLine">
+		SELECT RC_NO FROM SWIPE.CSR_RC_LINE WHERE <![CDATA[ cur_date > sysdate -15 ]]> 
+	</select>
+   
+    <insert id="insertUserByOnDNShift" parameterType="SwipeCardTimeInfos">
+		INSERT INTO SWIPE.CSR_SWIPECARDTIME (EMP_ID,SWIPE_DATE,SwipeCardTime,WorkshopNo,PRIMARY_ITEM_NO,SHIFT,CLASS_NO,PROD_LINE_CODE)
+		VALUES
+		( #{EMP_ID}, #{SWIPE_DATE}, #{SwipeCardTime}, #{WorkshopNo}, #{PRIMARY_ITEM_NO}, #{Shift},#{CLASS_NO},#{ProdLineCode})
+    </insert>
+    
+    <update id="updateChangeLineUserByOnDuty" parameterType="SwipeCardTimeInfos">
+    	update SWIPE.CSR_SWIPECARDTIME set SwipeCardTime2 = #{SwipeCardTime2}
+    	WHERE  WorkshopNo=#{WorkshopNo}
+		  and <![CDATA[ SwipeCardTime >  to_date(to_char(sysdate,'yyyy-MM-dd'),'yyyy-MM-dd')  ]]>
+    </update>
+	
+	<update id="Update_rcno_ByLineNOandCardID" parameterType="SwipeCardTimeInfos">
+		UPDATE SWIPE.CSR_SWIPECARDTIME
+		SET RC_NO = #{RC_NO},
+		PRIMARY_ITEM_NO=#{PRIMARY_ITEM_NO}
+		WHERE
+		EMP_ID=#{EMP_ID} 
+		AND  <![CDATA[ swipecardtime >to_date(to_char(sysdate,'yyyy-MM-dd'),'yyyy-MM-dd')]]>
+		
+		
+	</update>
+	<update id="Update_rcno_ByLineNOandCardID_N" parameterType="SwipeCardTimeInfos">
+		UPDATE SWIPE.CSR_SWIPECARDTIME
+		SET RC_NO = #{RC_NO},
+		PRIMARY_ITEM_NO=#{PRIMARY_ITEM_NO}
+		WHERE	
+		WorkshopNo=#{WorkshopNo} 
+	    and <![CDATA[ to_char(SwipeCardTime,'yyyy-MM-dd') = to_char(sysdate-interval '12' hour,'yyyy-MM-dd')  ]]>
+	</update>
+	   
+    <select id="selectLoseEmployee" parameterType="RawRecord" resultType="int" >
+    	select count(cardid) from SWIPE.raw_record where cardid=#{CardID} and to_char(#{SwipeCardTime},'yyyy-MM-dd')=to_char(SwipeCardTime,'yyyy-MM-dd') 
+    </select>
+    
+    <insert id="insertRCInfo" parameterType="RCLine">
+		INSERT INTO SWIPE.CSR_RC_LINE
+			(rc_no,primary_item_no,prod_line_code,cur_date)
+		VALUES 
+			(#{RC_NO},#{PRIMARY_ITEM_NO},#{PROD_LINE_CODE},sysdate)
+    </insert> 
+    
+    <select id="curDayGoWorkCardCount" parameterType="int"
+		resultType="int">
+		select count(*)  from SWIPE.CSR_SWIPECARDTIME where EMP_ID = #{EMP_ID} 
+		AND WorkshopNo = #{WorkshopNo}
+		 AND SwipeCardTime2 is NULL 
+		and <![CDATA[ swipecardtime >to_date(to_char(sysdate,'yyyy-MM-dd'),'yyyy-MM-dd') and SwipeCardTime < to_date(to_char(sysdate+1,'yyyy-MM-dd'),'yyyy-MM-dd') ]]>
+	</select>
+	
+    <select id="getShiftCount" parameterType="EmpShiftInfos" resultType="int">
+		select count(*) from SWIPE.emp_class a,SWIPE.classno b 
+		where a.class_no=b.class_no  and id=#{id}  and  to_char(a.emp_date,'yyyy-MM-dd') = to_char(sysdate-#{shiftDay},'yyyy-MM-dd')
+	</select>
+	
+    <select id="getShiftByEmpId" parameterType="EmpShiftInfos" resultType="EmpShiftInfos">		 
+		 select a.id,to_char(a.emp_date,'yyyy-MM-dd') emp_date,a.class_no,b.class_desc,b.shift,
+		 to_timestamp(concat(to_char(sysdate,'yyyy-MM-dd'),b.class_start),'yyyy-MM-dd HH24:mi:ss') as class_start,
+		 to_timestamp(concat(to_char(sysdate,'yyyy-MM-dd'),b.class_end),'yyyy-MM-dd HH24:mi:ss') as class_end 
+		 from SWIPE.emp_class a,SWIPE.classno b 
+		 where a.class_no=b.class_no and id=#{id}  
+		 and to_char(a.emp_date,'yyyy-MM-dd')=to_char(sysdate-#{shiftDay},'yyyy-MM-dd')
+	</select>
+     
+     <select id="getDayRecord" parameterType="int"
+		resultType="int">        
+          SELECT 
+        count(recordid)
+       FROM
+        SWIPE.CSR_SWIPECARDTIME 
+       WHERE ((      
+         to_char(swipecardtime,'yyyy-MM-dd') = to_char(sysdate-#{shiftDay},'yyyy-MM-dd') 
+         or to_char(swipecardtime2, 'yyyy-MM-dd') = to_char(sysdate-#{shiftDay},'yyyy-MM-dd')
+         and shift='D')
+         or(
+          to_char(swipecardtime,'yyyy-MM-dd') = to_char(sysdate-#{shiftDay},'yyyy-MM-dd')  
+         and swipecardtime2 is null
+         and shift='N'
+         ))
+         AND EMP_ID = #{EMP_ID} 
+	</select>
+
+	 <!-- Check Current Version in Database -->
+   <select id="getCurrentVersionFromDB" resultType="hashmap">
+    	select version,sysdate as db_time
+    	from SWIPE.Swipecard_Version
+    	where is_avaliable='T'
+    		and Prog_Name='SwipeCard'
+   </select>
+   
+  <!--  Check Continues workers(7 days) -->
+   <select id="getContinuesWorker" statementType="CALLABLE" parameterType="java.util.Map" resultType="int"> resultType="java.util.Map"
+    {call swipecard.GET_CONTINUS_WORK_DAYS(#{newCardID,jdbcType=VARCHAR,javaType=STRING,mode=IN})}
+   </select>  
+
+   <!-- Check Continues workers(N days) -->    
+   <select id="getOneWeekWorkDays" parameterType="EmpShiftInfos" resultType="int">          
+          SELECT count(*) FROM SWIPE.CSR_SWIPECARDTIME where         
+            <![CDATA[ to_date(SWIPE_DATE,'yyyy-MM-dd') >to_date(to_char(sysdate-7,'yyyy-MM-dd'),'yyyy-MM-dd') 
+           AND to_date(SWIPE_DATE,'yyyy-MM-dd') < to_date(to_char(sysdate,'yyyy-MM-dd'),'yyyy-MM-dd')]]>
+           AND EMP_ID = #{Id}
+   </select> 
+   
+   <select id="getTwoDayBeforWorkDays" parameterType="EmpShiftInfos" resultType="int">
+        SELECT count(*) FROM SWIPE.CSR_SWIPECARDTIME where         
+            <![CDATA[ to_date(SWIPE_DATE,'yyyy-MM-dd') >to_date(to_char(sysdate-8,'yyyy-MM-dd'),'yyyy-MM-dd') 
+           AND to_date(SWIPE_DATE,'yyyy-MM-dd') < to_date(to_char(sysdate-1,'yyyy-MM-dd'),'yyyy-MM-dd')]]>
+           AND EMP_ID = #{Id}
+   </select> 
+   
+   <!--  Check isA2_DepId -->  
+   <select id="isA2DepId" parameterType="Employee" resultType="int">          
+          select Count(*) from a2_dept where (DEPID=#{CostID} and DEPT_PROPERTY = 'C') or(DEPID=#{depid} and DEPT_PROPERTY = 'Z')
+   </select> 
+ 
+   
+   <!--  Check isLimitWorkedOneWeek workers(7 days) -->  
+   <select id="isLimitWorkedOneWeek" parameterType="Employee" resultType="int">         
+          select Count(*) from a2_dept where ((DEPID=#{depid} and DEPT_PROPERTY = 'Z') or (DEPID=#{CostID}  and DEPT_PROPERTY = 'C')) and isLimitWorkedOneWeek=0
+   </select> 
+    
+   <!-- Check On Duty time is between Class on duty time - 15 mins  and Class on duty time -->
+   <select id="getOnDutyTimeValid" statementType="CALLABLE" parameterType="java.util.Map" resultType="java.util.Map">
+   	{call swipecard.VALIDATE_ON_DUTY_TIME(#{onDutyTime,jdbcType=DATE,javaType=DATE,mode=IN}),#{empID,jdbcType=VARCHAR,javaType=STRING,mode=IN},#{isOnDutyTimeValid,jdbcType=INTEGER,javaType=int,mode=out})}
+   </select>
+    
+   <!-- Insert row swipe record to raw_record table -->
+   <insert id="addRawSwipeRecord" parameterType="RawRecord">
+       <if test="Record_Status==null">
+           INSERT INTO SWIPE.raw_record (Id,CardID,SwipeCardTime,update_time,ip_address)
+           VALUES
+           (#{Id},#{CardID},#{SwipeCardTime},sysdate,#{swipeCardHostIp})
+		</if>
+		<if test="Record_Status!=null">
+		    INSERT INTO SWIPE.raw_record (Id,CardID,SwipeCardTime,update_time,record_status,ip_address)
+		    VALUES
+		    (#{Id},#{CardID},#{SwipeCardTime},sysdate,#{Record_Status},#{swipeCardHostIp})
+		</if>
+   </insert>
+   
+    <update id="updateRawRecordStatus" parameterType="RawRecord">
+    	update SWIPE.raw_record set record_status = #{Record_Status}
+    	WHERE CardID=#{CardID}
+		and to_char(swipecardtime,'yyyy-MM-dd HH24:mi:ss') =to_char(#{SwipeCardTime},'yyyy-MM-dd HH24:mi:ss')
+		<if test="Id!=null">
+		    and ID = #{Id}
+		</if>
+		<if test="Id==null">
+		    and ID is null
+		</if>
+    </update>
+    
+    <select id="selectLineNoList" resultType="LineNO">
+    	SELECT distinct workshopno,lineno from SWIPE.lineno
+    </select>
+    
+    <select id="getIpByControl_except" parameterType="String" resultType="String">
+    	SELECT com_ip 
+		FROM SWIPE.app_login_control WHERE
+ 		control_except = #{control_except}
+    </select>
+    
+    <select id="isAdminByCardID" parameterType="String" resultType="int">
+    	select count(*) from SWIPE.csr_employee where
+    	 cardid=#{cardid} 
+    	 and Permission=1 
+    	 and isOnWork=0
+    </select>
+    
+      <select id="selectWorkshopNos" resultType="String">
+		SELECT WorkshopNo FROM SWIPE.lineno WHERE WorkshopNo is not null AND ENABLED = 1 GROUP BY WorkshopNo 
+  </select>
+    
+  <select id="selectOnLineNum" parameterType="SwipeCardTimeInfos" resultType="int">
+  		select count(*)
+  		from swipe.csr_swipecardtime
+  		where WorkshopNo=#{WorkshopNo}
+  		and PROD_LINE_CODE=#{ProdLineCode} 
+  		and  <![CDATA[swipe_date=to_char(sysdate,'yyyy-mm-dd')]]>
+  </select>
+  
+  <select id="selectLineSize" parameterType="LineNO" resultType="int">
+  		select LineSize
+  		from swipe.LINENO
+  		where WorkshopNo=#{WorkShopNo}
+  		<if test="LineNo!=null">
+		    and LINENO=#{LineNo}
+		</if>
+  </select>
+   
+  <select id="selectLineNoByWorkShopNo" parameterType="String" resultType="String">
+  		select LINENO
+  		from swipe.LINENO
+  		where WorkshopNo=#{WorkshopNo} and LINENO is not null
+  </select> 
+  
+   <select id="isOutWorkSwipeToday" parameterType="String" resultType="int"> 		  
+      select count(*) from  swipe.csr_swipecardtime a WHERE 
+      a.EMP_ID = #{empId} 
+       and <![CDATA[a.SWIPE_DATE = to_char(sysdate,'yyyy-mm-dd')]]>    
+  		AND a.SWIPECARDTIME2 is not null
+  </select>
+  
+     <select id="isGoWorkSwipeToday" parameterType="String" resultType="int">
+  		select count(*) from swipe.CSR_SWIPECARDTIME a
+    		where a.EMP_ID = #{empId}
+    		AND a.SWIPECARDTIME2 IS NULL 
+    		AND a.SWIPECARDTIME IS NOT NULL 
+    		and ((<![CDATA[a.SWIPE_DATE = to_char(sysdate-1,'yyyy-MM-dd')]]> and a.shift='N') 
+    		or <![CDATA[a.SWIPE_DATE = to_char(sysdate,'yyyy-MM-dd')]]>)		
+  </select>
+  
+  <update id="updateLineNobyToday" parameterType="SwipeCardTimeInfos">
+    	update SWIPE.CSR_SWIPECARDTIME set WORKSHOPNO=#{WorkshopNo},PROD_LINE_CODE = #{ProdLineCode}
+    	WHERE EMP_ID=#{EMP_ID}
+    	AND SWIPECARDTIME2 IS NULL 
+    	AND SWIPECARDTIME IS NOT NULL 
+		AND <![CDATA[SWIPE_DATE = to_char(sysdate,'yyyy-mm-dd')]]><!-- SWIPE_DATE=sysdate 包含白班刷卡和当天24点之前夜班刷卡-->		
+  </update>
+  
+  <update id="updateLineNobySwipeCard" parameterType="SwipeCardTimeInfos">
+    	update SWIPE.CSR_SWIPECARDTIME set WORKSHOPNO=#{WorkshopNo},PROD_LINE_CODE = #{ProdLineCode}
+    	WHERE EMP_ID=#{EMP_ID}
+    	AND SWIPECARDTIME2 IS NULL 
+    	AND SWIPECARDTIME IS NOT NULL 
+		AND (<![CDATA[SWIPE_DATE = to_char(sysdate,'yyyy-mm-dd')]]><!-- SWIPE_DATE=sysdate 包含白班刷卡和当天24点之前夜班刷卡-->
+		or (<![CDATA[SWIPE_DATE = to_char(sysdate-1,'yyyy-mm-dd')]]> and shift='N'))
+  </update>
+  
+ <select id="selectoffDutyLineNoToday" parameterType="String" resultType="String">
+  		select PROD_LINE_CODE
+  		from swipe.CSR_SWIPECARDTIME
+  		where EMP_ID = #{emp_id}		
+  		AND <![CDATA[SWIPE_DATE = to_char(sysdate,'yyyy-mm-dd')]]>
+  		AND SWIPECARDTIME is not null
+  </select>
+  
+  <select id="selectoffDutyLineNoYesday" parameterType="String" resultType="String">
+  		select PROD_LINE_CODE
+  		from swipe.CSR_SWIPECARDTIME
+  		where EMP_ID =  #{emp_id}		
+  		AND <![CDATA[SWIPE_DATE = to_char(sysdate-1,'yyyy-mm-dd')]]>
+  		AND SWIPECARDTIME is not null
+  </select>
+  
+</mapper>  
+
+

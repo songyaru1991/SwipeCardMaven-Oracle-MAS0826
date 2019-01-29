@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="UTF-8" ?>  
+<!DOCTYPE mapper  
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"  
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.swipecard.model.UserMapper">
+	<!-- Select Records-->
+	<select id="selectUserByRCNo" parameterType="int" resultType="RCLine">
+		select * from `testrcline` where RC_NO = #{RC_NO}
+	</select>
+	
+	<select id="selectUserByCardID" parameterType="int" resultType="Employee">
+		select * from `testemployee` where CardID = #{CardID} and isOnWork=0
+	</select>
+	
+	<select id="selectUserByCardIDAndPer" parameterType="int"
+		resultType="Employee">
+		select * from `testemployee` where cardid = #{cardid} and
+		Permission = 1 and isOnWork=0
+	</select>
+
+	<select id="selectUserByPermission" parameterType="int"
+		resultType="Employee">
+		select CardID from `testemployee` where Permission = 1 and isOnWork=0
+	</select>
+	
+	<select id="selectUserByLineNoAndWorkshopNo" parameterType="int" resultType="User">
+		SELECT CardID,
+				Name,
+				RC_NO,
+		       SwipeCardTime,
+		       SwipeCardTime2
+		FROM testSwipeCardTime
+		<!--WHERE PROD_LINE_CODE = '1L-01' and WorkshopNo = '第一車間'-->
+		 WHERE 
+		  WorkshopNo = #{WorkshopNo}
+		<!--  PROD_LINE_CODE = #{PROD_LINE_CODE}  --> 
+		  AND swipecardtime >curdate()
+	</select>
+	
+	<select id="selectUserByLineNoAndWorkshopNo_DShift" parameterType="int" resultType="EmpSwipeInfos">
+		SELECT a.CardID,b.ID,a.Name,a.RC_NO,a.SwipeCardTime,a.SwipeCardTime2
+		FROM testSwipeCardTime a
+        left join testemployee b on a.CardId=b.cardid
+		WHERE 
+		WorkshopNo = #{WorkshopNo}
+		and Shift = 'D'
+		AND date_format(SwipeCardTime,'%Y-%m-%d') = curdate()
+	</select>
+	
+	<select id="selectUserByLineNoAndWorkshopNo_NShift" parameterType="int" resultType="EmpSwipeInfos">
+		SELECT a.CardID,b.ID,a.Name,a.RC_NO,a.SwipeCardTime,a.SwipeCardTime2
+		FROM testSwipeCardTime a
+        left join testemployee b on a.CardId=b.cardid
+		WHERE 
+		WorkshopNo = #{WorkshopNo} 
+		<!--  PROD_LINE_CODE = #{PROD_LINE_CODE}   -->
+		and shift = 'N'
+		and date_format(date_sub(#{curDateTime},interval 12 hour),'%Y-%m-%d')  = 
+		date_format(date_sub(swipecardtime,interval 12 hour),'%Y-%m-%d')
+	</select>
+	
+	<select id="selectUserByLastDay" parameterType="int" resultType="EmpSwipeInfos">						
+		select b.id,a.name,a.rc_no,a.SwipeCardTime,a.SwipeCardTime2 from 
+		(SELECT CardID,
+				Name,
+				RC_NO,
+		       SwipeCardTime,
+		       SwipeCardTime2
+		FROM testSwipeCardTime
+		 WHERE 
+		 PROD_LINE_CODE = #{PROD_LINE_CODE}
+		  AND date_format(swipecardtime,'%Y-%m-%d') =date_format(date_sub(curdate(),interval 1 day),'%Y-%m-%d')) a,
+		  testemployee b  where a.cardid  =b.cardid and b.isOnWork=0
+	</select>
+	
+	<select id="getCurShiftByEmpId" parameterType="int"
+		resultType="EmpShiftInfos">
+		select a.id,a.emp_date,a.class_no,b.class_desc,b.shift,
+		<![CDATA[ STR_TO_DATE( CONCAT_WS(' ',curdate(),b.class_start),'%Y-%m-%d %H%i') as class_start,
+		STR_TO_DATE( CONCAT_WS(' ',curdate(),b.class_end),'%Y-%m-%d %H%i') as class_end ]]>
+		from emp_class a,classno b 
+		where a.class_no=b.class_no and id=#{id} 
+		 and  a.emp_date=curdate() 
+	</select>
+		
+	<select id="getYesdayShiftByEmpId" parameterType="int"
+		resultType="EmpShiftInfos">
+		select a.id,a.emp_date,a.class_no,b.class_desc,b.shift,
+		<![CDATA[ STR_TO_DATE( CONCAT_WS(' ',curdate(),b.class_start),'%Y-%m-%d %H%i') as class_start,
+		STR_TO_DATE( CONCAT_WS(' ',curdate(),b.class_end),'%Y-%m-%d %H%i') as class_end ]]>
+		from emp_class a,classno b 
+		where a.class_no=b.class_no and id=#{id} 
+		 and <![CDATA[ a.emp_date=date_sub(curdate(),interval 1 day) ]]>
+	</select>
+	
+	<!-- Check Continues workers(7 days) -->
+   	<select id="getContinuesWorker" statementType="CALLABLE" parameterType="java.util.Map" resultType="java.util.Map">
+    	{call swipecard.GET_CONTINUS_WORK_DAYS(#{newCardID,jdbcType=VARCHAR,javaType=STRING,mode=IN})}
+   	</select> 
+   
+   	<!-- Check On Duty time is between Class on duty time - 15 mins  and Class on duty time -->
+   	<select id="getOnDutyTimeValid" statementType="CALLABLE" parameterType="java.util.Map" resultType="java.util.Map">
+   	{call swipecard.VALIDATE_ON_DUTY_TIME(#{onDutyTime,jdbcType=DATE,javaType=DATE,mode=IN}),#{empID,jdbcType=VARCHAR,javaType=STRING,mode=IN},#{isOnDutyTimeValid,jdbcType=INTEGER,javaType=int,mode=out})}
+   	</select>
+   	
+   	<!-- Check Current Version in Database -->
+   	<select id="getCurrentVersionFromDB" resultType="hashmap">
+    	select version,current_timestamp as db_time
+    	from Swipecard_Version
+    	where is_avaliable='T'
+    		and Prog_Name='SWIPECARD'
+   	</select>
+   	
+   	<select id="selectCountAByCardID" parameterType="int"
+		resultType="hashmap">
+		SELECT count(*) AS rowsa
+		FROM `testSwipeCardTime`
+		WHERE CardID = #{CardID}
+		<!--   AND WorkshopNo = #{WorkshopNo} -->
+		  AND SwipeCardTime is not NULL
+		  AND Shift = #{Shift}
+		  AND <![CDATA[ SwipeCardTime > curdate() and SwipeCardTime < adddate(curdate(), '+1 days') ]]>
+	</select>
+
+	<select id="selectCountBByCardID" parameterType='int'
+		resultType="hashmap">
+		select count(*) as rowsb from `testSwipeCardTime` where CardID = #{CardID} 
+	<!-- 	AND WorkshopNo = #{WorkshopNo} -->
+		AND SwipeCardTime2 is not NULL 
+		and <![CDATA[ SwipeCardTime > curdate() and SwipeCardTime < adddate(curdate(), '+1 days') ]]>		
+	</select>
+	
+	<select id="selectCountNByCardID" parameterType='int'
+		resultType="hashmap">
+		select count(*) as rowsd from `testSwipeCardTime` where CardID = #{CardID} 
+		<!-- AND WorkshopNo = #{WorkshopNo} -->
+		AND Shift = #{Shift}
+		AND SwipeCardTime2 is not NULL 
+		and <![CDATA[ SwipeCardTime > date_sub(curdate(),interval 1 day) and SwipeCardTime < curdate()]]>		
+	</select>
+	
+	<select id="selectGoWorkNByCardID" parameterType='int'
+		resultType="hashmap">
+		select count(*) as rowse from `testSwipeCardTime` where CardID = #{CardID} 
+		<!-- AND WorkshopNo = #{WorkshopNo} -->
+		AND Shift = #{Shift}
+		AND SwipeCardTime is not NULL 
+		and <![CDATA[ SwipeCardTime > date_sub(curdate(),interval 1 day) and SwipeCardTime < curdate()]]>		
+	</select>	
+	
+	<select id="selectOutWorkByCardID" parameterType='int'
+		resultType="hashmap">
+		select count(*) as rowsg from `testSwipeCardTime` where CardID = #{CardID} 
+	    <!-- 	AND WorkshopNo = #{WorkshopNo} -->
+		AND Shift = #{Shift}
+		AND SwipeCardTime is NULL and SwipeCardTime2 is not null
+		and <![CDATA[ SwipeCardTime2 > curdate() and SwipeCardTime2 < adddate(curdate(), '+1 days') ]]>				
+	</select>	 
+	
+	<select id="isGoWorkSwipeDuplicate" parameterType="int"
+		resultType="hashmap">
+	   SELECT count(*) AS goWorkCount
+	   FROM `testSwipeCardTime`
+	   WHERE CardID = #{CardID}
+       and Date_format(swipecardtime, '%Y-%m-%d')=curdate() 
+       AND swipecardtime > date_sub(#{SwipeCardTime},interval '9,60' MINUTE_SECOND)
+	</select>
+	
+	<select id="isOutWorkSwipeDuplicate" parameterType="int"
+		resultType="hashmap">
+	   SELECT count(*) AS outWorkCount
+	   FROM `testSwipeCardTime`
+	   WHERE CardID = #{CardID}
+       and Date_format(swipecardtime2, '%Y-%m-%d')=curdate() 
+       AND swipecardtime2 > date_sub(#{SwipeCardTime2},interval '9,60' MINUTE_SECOND)
+	</select>
+   	
+   	<select id="checkFill" parameterType="int"
+		resultType="hashmap">
+		SELECT count(rc_no) as FillRows
+		FROM testswipecardtime
+		WHERE WorkshopNo = #{WorkshopNo}
+		<!-- and PROD_LINE_CODE = #{PROD_LINE_CODE} -->
+		and swipecardtime > curdate()
+		
+	</select>
+	
+    <select id="curDayGoWorkCardCount" parameterType="int"
+		resultType="hashmap">
+		select count(*) as rowsb from `testSwipeCardTime` where CardID = #{CardID} 
+		AND WorkshopNo = #{WorkshopNo}
+		 AND SwipeCardTime2 is NULL 
+		and <![CDATA[ SwipeCardTime > curdate() and SwipeCardTime < adddate(curdate(), '+1 days') ]]>
+	</select>
+	
+     <select id="getCurShiftCount" parameterType="int"
+		resultType="hashmap">
+		select count(*) AS curShiftCount from emp_class a,classno b 
+		where a.class_no=b.class_no  and id=#{id}  and 
+		a.emp_date = curdate()		
+	</select>
+	
+	<select id="getYesdayShiftCount" parameterType="int"
+		resultType="hashmap">
+		select count(*) AS yesShiftCount from emp_class a,classno b 
+		where a.class_no=b.class_no  and id=#{id}  and  a.emp_date = date_sub(curdate(),interval 1 day)
+	</select>
+   	
+   	<select id="selectChangeLineByCardID" parameterType="int"
+		resultType="hashmap">		
+		  SELECT WorkshopNo
+		FROM `testSwipeCardTime`
+		WHERE CardID = #{CardID}
+		  AND SwipeCardTime is not NULL
+		  AND <![CDATA[ SwipeCardTime > curdate() and SwipeCardTime < adddate(curdate(), '+1 days') ]]>
+	</select>
+
+	<select id="selectRCNo" parameterType="int" resultType="hashmap">
+		SELECT
+		RC_NO
+		FROM testrcline WHERE
+		<![CDATA[ cur_date >  subdate(curdate(), INTERVAL 15 DAY ) ]]> 
+	</select>
+
+	<select id="selectWorkshopNo" parameterType="int" resultType="hashmap">
+		SELECT WorkshopNo
+		FROM `lineno`
+		WHERE WorkshopNo != ''
+		GROUP BY
+		WorkshopNo 
+	</select>
+
+	<select id="selectLineNoByWorkshopNo" parameterType="int"
+		resultType="hashmap">
+		SELECT LineNo
+		FROM lineno
+		WHERE WorkshopNo = #{WorkshopNo}
+		ORDER BY LineNo,LENGTH(LineNo)
+	</select>
+	<!-- Update -->
+	<update id="updateOutWorkDSwipeTime" parameterType="EmpSwipeInfos">
+    	update testSwipeCardTime set SwipeCardTime2 = #{SwipeCardTime2} 
+    	WHERE CardID = #{CardID} 
+    	and Shift = #{Shift} 
+    	<!-- AND WorkshopNo = #{WorkshopNo} -->
+		and <![CDATA[ date_format(SwipeCardTime,'%Y-%m-%d') = curdate()  ]]>
+    </update>
+    
+   	<update id="updateOutWorkNSwipeTime" parameterType="EmpSwipeInfos">
+    	update testSwipeCardTime set SwipeCardTime2 = #{SwipeCardTime2} 
+    	WHERE CardID = #{CardID} 
+    	and Shift = #{Shift} 
+    	<!-- AND WorkshopNo = #{WorkshopNo} -->
+		and <![CDATA[ date_format(SwipeCardTime,'%Y-%m-%d') = date_format(date_sub(#{SwipeCardTime2},interval 24 hour),'%Y-%m-%d')  ]]>
+    </update>
+    
+    <update id="updateChangeLineUserByOnDuty" parameterType="EmpSwipeInfos">
+    	update testSwipeCardTime set SwipeCardTime2 = #{SwipeCardTime2} 
+    	WHERE CardID = #{CardID} and WorkshopNo=#{WorkshopNo}
+		  and <![CDATA[ SwipeCardTime > curdate()  ]]>
+    </update>
+    
+    <update id="updateUserByOffDDuty" parameterType="EmpSwipeInfos">
+    	update testSwipeCardTime set SwipeCardTime2 = #{SwipeCardTime2} 
+    	WHERE CardID = #{CardID} and Shift = #{Shift}
+			and <![CDATA[ date_format(SwipeCardTime,'%Y-%m-%d') = curdate()  ]]>
+    </update>
+    
+    <update id="updateUserByOffNDuty" parameterType="EmpSwipeInfos">
+    	update testSwipeCardTime set SwipeCardTime2 = #{SwipeCardTime2} 
+    	WHERE CardID = #{CardID}
+    		and Shift = #{Shift}
+			and <![CDATA[ date_format(SwipeCardTime,'%Y-%m-%d') = date_format(date_sub(#{SwipeCardTime2},interval 12 hour),'%Y-%m-%d')  ]]>
+    </update>
+    
+    <update id="Update_rcno_ByLineNOandCardID" parameterType="EmpSwipeInfos">
+		UPDATE testswipecardtime
+		SET RC_NO = #{RC_NO},
+		PRIMARY_ITEM_NO=#{PRIMARY_ITEM_NO}
+		WHERE
+		<!-- PROD_LINE_CODE=#{PROD_LINE_CODE} and  -->
+		WorkshopNo=#{WorkshopNo} and
+		Name = #{Name}
+		AND swipecardtime <![CDATA[>curdate()]]>
+	</update>
+	<update id="Update_rcno_ByLineNOandCardID_N" parameterType="EmpSwipeInfos">
+		UPDATE testswipecardtime
+		SET RC_NO = #{RC_NO},
+		PRIMARY_ITEM_NO=#{PRIMARY_ITEM_NO}
+		WHERE
+		<!-- PROD_LINE_CODE=#{PROD_LINE_CODE} -->		
+		WorkshopNo=#{WorkshopNo} 
+		and Name = #{Name}
+		and <![CDATA[ date_format(SwipeCardTime,'%Y-%m-%d') = date_format(date_sub(curdate(),interval 12 hour),'%Y-%m-%d')]]>
+	</update>
+	<!-- Insert -->
+	<insert id="insertUserByOnDuty" parameterType="int" useGeneratedKeys="true"
+		keyColumn="id">
+		INSERT INTO `testSwipeCardTime` (CardID, Name,
+		SwipeCardTime,WorkshopNo, 
+		PRIMARY_ITEM_NO, RC_NO)
+		VALUES
+		(#{CardID}, #{Name}, #{SwipeCardTime},
+		#{WorkshopNo},
+		#{PRIMARY_ITEM_NO}, #{RC_NO})  
+    </insert>
+    
+    <insert id="insertUserByOnDNShift" parameterType="int" useGeneratedKeys="true"
+		keyColumn="id">
+		INSERT INTO `testSwipeCardTime` (CardID,ID, Name,SwipeCardTime,WorkshopNo,PRIMARY_ITEM_NO, RC_NO,SHIFT)
+		VALUES
+		(#{CardID},#{Id}, #{Name}, #{SwipeCardTime}, #{WorkshopNo}, #{PRIMARY_ITEM_NO}, #{RC_NO}, #{Shift})
+    </insert>
+    
+     <insert id="goWorkSwipeDuplicate" parameterType="int" useGeneratedKeys="true"
+		keyColumn="id">
+		INSERT INTO `testswipecardtime_ht` (Id,CardID, Name,SwipeCardTime,WorkshopNo,PRIMARY_ITEM_NO, RC_NO,SHIFT)
+		VALUES
+		(#{Id},#{CardID}, #{Name}, #{SwipeCardTime}, #{WorkshopNo}, #{PRIMARY_ITEM_NO}, #{RC_NO}, #{Shift})
+    </insert>
+    
+     <insert id="outWorkSwipeDuplicate" parameterType="int" useGeneratedKeys="true"
+		keyColumn="id">
+		INSERT INTO `testswipecardtime_ht` (Id,CardID, Name,SwipeCardTime2,WorkshopNo,PRIMARY_ITEM_NO, RC_NO,SHIFT)
+		VALUES
+		(#{Id},#{CardID}, #{Name}, #{SwipeCardTime2}, #{WorkshopNo}, #{PRIMARY_ITEM_NO}, #{RC_NO}, #{Shift})
+     </insert>
+     
+     <insert id="insertInfor" parameterType="int" useGeneratedKeys="true"
+		keyColumn="id">
+	<!-- 	INSERT INTO `testinfor`
+			(`RC_NO`, `PRIMARY_ITEM_NO`, `PROD_LINE_CODE`, WorkshopNo,`STD_MAN_POWER`, `ACTUAL_POWER`, `REMARK`)
+		VALUES 
+			( #{RC_NO},#{PRIMARY_ITEM_NO},#{PROD_LINE_CODE},#{WorkshopNo},#{STD_MAN_POWER},#{ACTUAL_POWER},#{REMARK} ) -->
+			INSERT INTO `testinfor`
+			(`RC_NO`, `PRIMARY_ITEM_NO`, WorkshopNo,`STD_MAN_POWER`, `ACTUAL_POWER`, `REMARK`,CurrentTime)
+		VALUES 
+			( #{RC_NO},#{PRIMARY_ITEM_NO},#{WorkshopNo},#{STD_MAN_POWER},#{ACTUAL_POWER},#{REMARK} ,NOW())
+    </insert>
+	<insert id="insertUserByNoCard" parameterType="int" useGeneratedKeys="true"
+		keyColumn="id">
+<!-- 		INSERT INTO `lose_employee`
+			( `LineNo`, WorkshopNo,cardid,name,id,swipeDate)
+		VALUES 
+			(#{PROD_LINE_CODE},#{WorkshopNo},#{CardID},#{Name},#{id},#{swipeDate} ) -->
+		INSERT INTO `lose_employee`
+			( WorkshopNo,cardid,swipeDate)
+		VALUES 
+			(#{WorkshopNo},#{CardID},#{swipeDate} )
+    </insert>
+    
+    <select id="selectLoseEmployee" parameterType="int" resultType="User" >
+    	select count(cardid) as lostCon from lose_employee where cardid=#{CardID} and swipeDate=#{swipeDate} and State=0
+    </select>
+    
+    <insert id="insertRCInfo" parameterType="int" useGeneratedKeys="true"
+		keyColumn="id">
+		INSERT INTO `testrcline`
+			(rc_no,primary_item_no,prod_line_code,cur_date)
+		VALUES 
+			(#{RC_NO},#{PRIMARY_ITEM_NO},#{WorkshopNo},NOW())
+    </insert>
+    
+    <insert id="insertOutWorkSwipeTime" parameterType="int" useGeneratedKeys="true"
+		keyColumn="id">
+		INSERT INTO `testSwipeCardTime` (CardID,ID, Name,SwipeCardTime2,WorkshopNo,PRIMARY_ITEM_NO, RC_NO,SHIFT)
+		VALUES
+		(#{CardID},#{Id}, #{Name}, #{SwipeCardTime2}, #{WorkshopNo}, #{PRIMARY_ITEM_NO}, #{RC_NO}, #{Shift})
+    </insert>
+</mapper>
