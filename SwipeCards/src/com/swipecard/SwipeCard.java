@@ -393,8 +393,9 @@ public class SwipeCard extends JFrame {
 	//	panel1.add(labelT2_1);
 	//	panel1.add(labelShift);
 
-		panel1.add(adminCradLabel);
-		panel1.add(adminCardTextField);
+		//MAS换线刷管理员卡
+		//panel1.add(adminCradLabel);
+		//panel1.add(adminCardTextField);
 		
 		panel1.add(labelT1_3);
 		panel1.add(swipeTimeLable);
@@ -907,7 +908,7 @@ public class SwipeCard extends JFrame {
 												SwipeCardTimeInfos userNSwipe = new SwipeCardTimeInfos();
 												Date SwipeCardTime2 = swipeCardTime;														
 												userNSwipe.setEMP_ID(Id);
-												userNSwipe.setSWIPE_DATE(yesterdayDate);
+												userNSwipe.setSWIPE_DATE(yesterdayDate);	
 												userNSwipe.setSwipeCardTime2(SwipeCardTime2);
 												userNSwipe.setRC_NO(RC_NO);
 												userNSwipe.setShift(yesterdayShift);
@@ -917,24 +918,27 @@ public class SwipeCard extends JFrame {
 												userNSwipe.setWorkshopNo(WorkshopNo);
 												userNSwipe.setProdLineCode(PROD_LINE_CODE);
 												
-
-												if (curShift.equals("N")) {													
+												
+												if (curShift.equals("N")) {											
 													if (swipeCardTime.getHours() < 12) {
+														//夜班
 														fieldSetting=swipeCardService.offDutyNightShiftSwipeCard(session, RC_NO, PRIMARY_ITEM_NO, WorkshopNo, eif, SwipeCardTime2, empYesShift,PROD_LINE_CODE);
-														showLabelContent(fieldSetting);
+														showLabelContent(fieldSetting);																					
 													} else {
 														// 上班刷卡
 														fieldSetting=swipeCardService.swipeCardRecord(session, eif, swipeCardTime, RC_NO, PRIMARY_ITEM_NO, WorkshopNo,PROD_LINE_CODE);
 														showLabelContent(fieldSetting);
 													}
 												} else {													
+													// 判断昨日夜班是否已存在上刷
+													int goWorkNCardCount =  session.selectOne("selectGoWorkNByCardID", userNSwipe);
 													
-													int goWorkNCardCount =  session
-															.selectOne("selectGoWorkNByCardID", userNSwipe);
+													// 判断昨日夜班是否已存在下刷
+													int yesterdaygoWorkCardCount =  session.selectOne("selectCountNByCardID", userNSwipe);
+																										
 													if (goWorkNCardCount > 0) { 
 														// 昨日夜班已存在上刷
-														int yesterdaygoWorkCardCount =  session
-																.selectOne("selectCountNByCardID", userNSwipe);
+														
 														if (yesterdaygoWorkCardCount == 0) {
 															// 夜班下刷刷卡記錄不存在
 															
@@ -946,6 +950,7 @@ public class SwipeCard extends JFrame {
 																				+ eif.getName() + "\n刷卡時間： " + swipeCardTimeStr
 																				+"\n昨日班別為:"+yesterdayClassNo
 																				+ "\n" + "員工下班刷卡成功！\n------------\n");
+																
 																session.update("updateOutWorkNSwipeTime", userNSwipe);
 																session.commit();
 															} else {

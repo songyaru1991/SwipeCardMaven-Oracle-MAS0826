@@ -119,7 +119,8 @@ public class DESUtils {
 //		System.out.println(cod+"----"+cod2);
 			
 		String cod = getEncryptString("swipe");
-		String cod2 = getEncryptString("mis_realtime");
+		//String cod2 = getEncryptString("mis_realtime");   //马鞍山DB
+		String cod2 = getEncryptString("a2#ks#ssgs");      //昆山DB
 		System.out.println(cod+"----"+cod2);
 	}
 

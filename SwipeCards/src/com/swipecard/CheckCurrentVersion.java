@@ -70,15 +70,19 @@ public class CheckCurrentVersion implements Runnable {
 			while (iterator.hasNext()) {
 				versionFromDB = iterator.next();
 			}
-			String dbTime=versionFromDB.get("DB_TIME").toString();
-			CurrentDBTimeStamp = Timestamp.valueOf(dbTime); 
-			//CurrentDBTimeStamp = (Timestamp) versionFromDB.get("DB_TIME");
+			if(versionFromDB!=null){
+				String dbTime=versionFromDB.get("DB_TIME").toString();
+				CurrentDBTimeStamp = Timestamp.valueOf(dbTime); 
+				//CurrentDBTimeStamp = (Timestamp) versionFromDB.get("DB_TIME");
 			
-			String versionByDb=versionFromDB.get("VERSION").toString();			
-			if (versionByDb.equals(localVersion))
+				String versionByDb=versionFromDB.get("VERSION").toString();			
+				if (versionByDb.equals(localVersion))
+					IsLatest = true;
+				else
+					IsLatest = false;
+			}else
 				IsLatest = true;
-			else
-				IsLatest = false;
+			
 		} catch (Exception ex) {
 			logger.error("版本檢查時 Error building SqlSession，原因:"+ex);
 			/*SwipeCardNoDB d = new SwipeCardNoDB(null);
@@ -111,7 +115,7 @@ public class CheckCurrentVersion implements Runnable {
 						AutoUpdate autoUpdate = new AutoUpdate();
 						autoUpdate.update();
 						try {
-							Process exec = Runtime.getRuntime().exec("java -jar D:/SwipeCard/update.jar");
+							Process exec = Runtime.getRuntime().exec("java -jar D:/SwipeCard/AutoUpdateUtil.jar");
 							System.exit(0);
 						} catch (IOException e) {
 							// TODO Auto-generated catch block

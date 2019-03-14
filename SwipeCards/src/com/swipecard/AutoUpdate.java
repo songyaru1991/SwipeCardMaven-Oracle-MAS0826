@@ -20,13 +20,13 @@ import com.swipecard.util.PropertyUtil;
 */
 public class AutoUpdate {
 	public void update(){
-		File file = new File("D:/SwipeCard/update.jar");
+		File file = new File("D:/SwipeCard/AutoUpdateUtil.jar");
 		if(!file.exists()){
 			String serverIP=PropertyUtil.getProperty("serverIP");
 		    String serverUserName=PropertyUtil.getProperty("serverUserName");
 		    String serverPassword=PropertyUtil.getProperty("serverPassword");
 			boolean R = downFile(serverIP,serverUserName,serverPassword, 
-					"", "update.jar", "D:/SwipeCard/");
+					"", "AutoUpdateUtil.jar", "D:/SwipeCard/");
 		}
 	}
 	

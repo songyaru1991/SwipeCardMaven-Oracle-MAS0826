@@ -20,7 +20,7 @@ public class AutoUpdateUtil {
 	private static Logger logger = Logger.getLogger(AutoUpdateUtil.class);
 	public static void main(String[] args) {
 		try {
-			Thread.sleep(2);
+			Thread.sleep(2000);//2S
 		    String serverIP=PropertyUtil.getProperty("serverIP");
 		    String serverUserName=PropertyUtil.getProperty("serverUserName");
 		    String serverPassword=PropertyUtil.getProperty("serverPassword");
